@@ -633,7 +633,26 @@ html, body { height: 100%; max-height: 100%; overflow: hidden; font-family: var(
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
-/* ANIMATIONS */
+/* ÖZEL RUTİNLER */
+.ozel-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 10px; transition: border-color var(--transition); }
+.ozel-card:hover { border-color: var(--border2); }
+.ozel-card.overdue { border-left: 3px solid var(--red); }
+.ozel-card.due-soon { border-left: 3px solid var(--amber); }
+.ozel-card.ok { border-left: 3px solid var(--green); }
+.ozel-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.ozel-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+.ozel-name { font-size: 14px; font-weight: 500; color: var(--text); }
+.ozel-freq { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.ozel-status { margin-left: auto; text-align: right; }
+.ozel-badge { font-size: 10px; padding: 3px 9px; border-radius: 20px; font-weight: 500; display: inline-block; }
+.ozel-badge.red { background: var(--red-bg); color: var(--red); }
+.ozel-badge.amber { background: var(--amber-bg); color: var(--amber); }
+.ozel-badge.green { background: var(--green-bg); color: var(--green); }
+.ozel-badge.gray { background: var(--bg3); color: var(--text2); }
+.ozel-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--text2); margin-bottom: 8px; }
+.ozel-actions { display: flex; gap: 7px; margin-top: 6px; }
+.ozel-progress { height: 4px; background: var(--bg3); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+.ozel-progress-bar { height: 100%; border-radius: 2px; transition: width 0.3s; }
 .panel.active { animation: fadeIn 0.15s ease; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 </style>
@@ -670,8 +689,8 @@ html, body { height: 100%; max-height: 100%; overflow: hidden; font-family: var(
     <div class="sb-item" onclick="go('lists')" id="nav-lists"><span class="sb-icon" id="icon-lists">☷</span>Listeler</div>
     <div class="sb-item" onclick="go('market')" id="nav-market"><span class="sb-icon" id="icon-market">◉</span>Market</div>
     <div class="sb-item" onclick="go('health')" id="nav-health"><span class="sb-icon" id="icon-health">♡</span>Sağlık</div>
+    <div class="sb-item" onclick="go('ozel')" id="nav-ozel"><span class="sb-icon" id="icon-ozel">🔔</span>Rutinler<span class="sb-badge" id="ozel-due-cnt" style="display:none"></span></div>
     <div class="sb-item" onclick="go('car')" id="nav-car"><span class="sb-icon" id="icon-car">◎</span>Araç</div>
-    <div class="sb-item" onclick="go('settings')" id="nav-settings"><span class="sb-icon" id="icon-settings">⚙</span>Ayarlar</div>
   </div>
   <button class="sb-quick-note" onclick="openQuickNote()">✎ Hızlı not al...</button>
   <div class="sb-footer">
@@ -736,7 +755,7 @@ html, body { height: 100%; max-height: 100%; overflow: hidden; font-family: var(
       <div class="notes-list" id="notes-list"></div>
     </div>
     <div class="note-editor-area">
-      <div class="ne-toolbar">
+      <div class="ne-toolbar" id="ne-toolbar">
         <input class="ne-title-input" id="ne-title" placeholder="Başlık..." oninput="saveNote()"/>
         <select class="folder-sel" id="ne-folder" onchange="changeNoteFolder(this.value)"></select>
         <div class="color-tags" id="note-color-tags"></div>
@@ -910,6 +929,15 @@ html, body { height: 100%; max-height: 100%; overflow: hidden; font-family: var(
       </div>
     </div>
   </div>
+</div>
+
+<!-- ÖZEL -->
+<div class="panel" id="panel-ozel">
+  <div class="panel-hdr">
+    <div class="panel-title">Rutinler</div>
+    <button class="btn primary" onclick="openAddOzel()">+ Rutin ekle</button>
+  </div>
+  <div class="panel-body" id="ozel-body"></div>
 </div>
 
 <!-- ARAÇ -->
@@ -1150,6 +1178,11 @@ function defData() {
     water: 0,
     waterDate: today,
     car: {km:87450, lastOilKm:82000, lastTireChange:'2025-11', insurance:'2026-09-15', inspection:'2026-11-20'},
+    ozel: [
+      { id:1, name:'Diş Kontrolü', icon:'🦷', freq:'yearly', lastDate:'2025-09-15', note:'Dr. Ayşe Hanım, Ankara', notifDaysBefore:7 },
+      { id:2, name:'Diş Fırçası Yenileme', icon:'🪥', freq:'3months', lastDate:'2025-12-01', note:'', notifDaysBefore:3 },
+      { id:3, name:'Drive Arşiv Temizliği', icon:'💾', freq:'yearly', lastDate:'2025-01-10', note:'Google Drive + iCloud', notifDaysBefore:7 },
+    ],
     fuels: [{id:1, date:'2026-03-10', km:87200, liters:45, price:1800}],
     streak: 0,
     lastStreakDate: '',
@@ -1195,7 +1228,7 @@ function go(panel) {
   const nav = document.getElementById('nav-' + panel);
   if (nav) nav.classList.add('active');
   closeSidebar();
-  const renders = {home: renderHome, notes: renderNotes, planner: renderPlanner, evening: renderEvening, etsy: renderEtsy, origami: renderOrigami, birthdays: renderBirthdays, lists: renderLists, market: renderMarket, health: renderHealth, car: renderCar, settings: renderSettings};
+  const renders = {home: renderHome, notes: renderNotes, planner: renderPlanner, evening: renderEvening, etsy: renderEtsy, origami: renderOrigami, birthdays: renderBirthdays, lists: renderLists, market: renderMarket, health: renderHealth, ozel: renderOzel, car: renderCar, settings: renderSettings};
   if (renders[panel]) renders[panel]();
 }
 
@@ -1310,6 +1343,29 @@ function renderFolderSelects() {
 }
 
 const NOTE_COLORS_DEF = ['#E57373','#F0B429','#4FC87A','#6B9FD4','#9B8FD4','#F06292'];
+
+// Klasör renk haritası — her klasöre sabit renk
+const FOLDER_COLORS = {
+  felsefe: { bg:'#F0EEFB', border:'#9B8FD4', text:'#3C2A8A', dot:'#7F77DD' },
+  origami:  { bg:'#E5F5F3', border:'#4FC4B8', text:'#0F3028', dot:'#1D9E75' },
+  etsy:     { bg:'#FFF3D6', border:'#F0B429', text:'#5A3A00', dot:'#BA7517' },
+  kisisel:  { bg:'#FAECE7', border:'#F0997B', text:'#5A1E0A', dot:'#D85A30' },
+  muzik:    { bg:'#E6F1FB', border:'#6B9FD4', text:'#0C2A4A', dot:'#378ADD' },
+};
+const FOLDER_COLOR_POOL = [
+  { bg:'#FBEAF0', border:'#ED93B1', text:'#5A1030', dot:'#D4537E' },
+  { bg:'#EAF3DE', border:'#97C459', text:'#1A3A08', dot:'#639922' },
+  { bg:'#FCEBEB', border:'#F09595', text:'#5A1010', dot:'#E24B4A' },
+  { bg:'#E1F5EE', border:'#5DCAA5', text:'#073020', dot:'#1D9E75' },
+];
+
+function getFolderColor(folder) {
+  if (FOLDER_COLORS[folder]) return FOLDER_COLORS[folder];
+  // Dinamik klasörler için pool'dan renk ata
+  const idx = D.folders.indexOf(folder);
+  return FOLDER_COLOR_POOL[idx % FOLDER_COLOR_POOL.length] || FOLDER_COLOR_POOL[0];
+}
+
 function renderNoteColorTags() {
   const cur = D.notes.find(n => n.id === D.currentNoteId);
   document.getElementById('note-color-tags').innerHTML = NOTE_COLORS_DEF.map(c =>
@@ -1341,18 +1397,59 @@ function renderNotesList(q = '') {
   if (q !== undefined) noteQuery = q;
   const list = document.getElementById('notes-list');
   const filtered = getFilteredNotes(noteQuery);
-  list.innerHTML = filtered.length ? filtered.map(n => `
-    <div class="n-item ${n.id === D.currentNoteId ? 'active' : ''}" onclick="selectNote(${n.id})">
-      <div class="n-item-top">
-        ${n.urgent ? `<span class="n-tag" style="background:var(--red-bg);color:var(--red);">!</span>` : ''}
-        ${n.pinned && !n.urgent ? `<span style="font-size:11px;color:var(--amber);">★</span>` : ''}
-        ${n.color ? `<div style="width:8px;height:8px;border-radius:50%;background:${n.color};flex-shrink:0;"></div>` : ''}
-        <span class="n-title">${n.title || 'Başlıksız'}</span>
-      </div>
-      <div class="n-prev">${n.body.replace(/\n/g,' ').substring(0,50) || 'Boş'}</div>
-      <div class="n-date">${n.folder} · ${n.date}</div>
-    </div>`).join('') : '<div style="padding:16px;font-size:12px;color:var(--text3);">Not bulunamadı</div>';
+
+  if (!filtered.length) {
+    list.innerHTML = '<div style="padding:16px;font-size:12px;color:var(--text3);">Not bulunamadı</div>';
+    updateBadges(); return;
+  }
+
+  // Arama/filtre modunda veya tek klasör seçiliyse düz liste göster
+  const isFiltered = noteTabCurrent !== 'all' || noteQuery;
+  if (isFiltered) {
+    list.innerHTML = filtered.map(n => renderNoteItem(n)).join('');
+    updateBadges(); return;
+  }
+
+  // "Tümü" modunda klasöre göre grupla
+  const groups = {};
+  const folderOrder = [...new Set(filtered.map(n => n.folder))];
+  // Klasör sırasını D.folders'taki sıraya göre düzenle
+  folderOrder.sort((a,b) => D.folders.indexOf(a) - D.folders.indexOf(b));
+
+  folderOrder.forEach(f => {
+    groups[f] = filtered.filter(n => n.folder === f);
+  });
+
+  let html = '';
+  folderOrder.forEach(folder => {
+    const fc = getFolderColor(folder);
+    const notes = groups[folder];
+    const label = folder.charAt(0).toUpperCase() + folder.slice(1);
+    html += `
+      <div style="position:sticky;top:0;z-index:2;padding:6px 12px 5px;background:${fc.bg};border-bottom:1px solid ${fc.border};display:flex;align-items:center;gap:6px;">
+        <div style="width:8px;height:8px;border-radius:50%;background:${fc.dot};flex-shrink:0;"></div>
+        <span style="font-size:10px;font-weight:500;color:${fc.text};text-transform:uppercase;letter-spacing:0.07em;">${label}</span>
+        <span style="margin-left:auto;font-size:10px;color:${fc.text};opacity:0.6;">${notes.length}</span>
+      </div>`;
+    notes.forEach(n => { html += renderNoteItem(n, fc); });
+  });
+
+  list.innerHTML = html;
   updateBadges();
+}
+
+function renderNoteItem(n, fc) {
+  const folderColor = fc || getFolderColor(n.folder);
+  return `<div class="n-item ${n.id === D.currentNoteId ? 'active' : ''}" onclick="selectNote(${n.id})" style="border-left: 3px solid ${n.id === D.currentNoteId ? folderColor.dot : 'transparent'};">
+    <div class="n-item-top">
+      ${n.urgent ? `<span class="n-tag" style="background:var(--red-bg);color:var(--red);">!</span>` : ''}
+      ${n.pinned && !n.urgent ? `<span style="font-size:11px;color:var(--amber);">★</span>` : ''}
+      ${n.color ? `<div style="width:7px;height:7px;border-radius:50%;background:${n.color};flex-shrink:0;"></div>` : ''}
+      <span class="n-title">${n.title || 'Başlıksız'}</span>
+    </div>
+    <div class="n-prev">${n.body.replace(/\n/g,' ').substring(0,50) || 'Boş'}</div>
+    <div class="n-date">${n.date}</div>
+  </div>`;
 }
 
 function filterNotes(q) { renderNotesList(q); }
@@ -1363,6 +1460,12 @@ function selectNote(id) {
   document.getElementById('ne-title').value = n.title;
   document.getElementById('note-textarea').value = n.body;
   document.getElementById('ne-folder').value = n.folder;
+  // Klasör rengini toolbar'a yansıt
+  const fc = getFolderColor(n.folder);
+  const toolbar = document.getElementById('ne-toolbar');
+  if (toolbar) toolbar.style.borderBottom = `2px solid ${fc.dot}`;
+  const folderSel = document.getElementById('ne-folder');
+  if (folderSel) { folderSel.style.borderColor = fc.dot; folderSel.style.color = fc.text; folderSel.style.background = fc.bg; }
   const ub = document.getElementById('ne-urgent-btn');
   ub.textContent = n.urgent ? '! Önce ✓' : '! Önce';
   ub.style.background = n.urgent ? 'var(--red-bg)' : '';
@@ -1382,7 +1485,16 @@ function saveNote() {
 
 function changeNoteFolder(f) {
   const n = D.notes.find(n => n.id === D.currentNoteId);
-  if (n) { n.folder = f; save(); }
+  if (n) {
+    n.folder = f; save();
+    // Rengi güncelle
+    const fc = getFolderColor(f);
+    const toolbar = document.getElementById('ne-toolbar');
+    if (toolbar) toolbar.style.borderBottom = `2px solid ${fc.dot}`;
+    const folderSel = document.getElementById('ne-folder');
+    if (folderSel) { folderSel.style.borderColor = fc.dot; folderSel.style.color = fc.text; folderSel.style.background = fc.bg; }
+    renderNotesList();
+  }
 }
 
 function newNote() {
@@ -2092,6 +2204,185 @@ function parseVoiceEvent(text) {
     </select></div>`, 'addEvent', null, false);
 }
 
+// ---- ÖZEL RUTİNLER ----
+const FREQ_MAP = {
+  weekly:   { label:'Haftada bir',   days:7   },
+  monthly:  { label:'Ayda bir',      days:30  },
+  '3months':{ label:'3 ayda bir',    days:90  },
+  '6months':{ label:'6 ayda bir',    days:180 },
+  yearly:   { label:'Yılda bir',     days:365 },
+};
+
+function daysUntilOzel(item) {
+  if (!item.lastDate) return 0;
+  const freq = FREQ_MAP[item.freq] || FREQ_MAP.yearly;
+  const last = new Date(item.lastDate);
+  const nextDue = new Date(last.getTime() + freq.days * 86400000);
+  return Math.round((nextDue - new Date()) / 86400000);
+}
+
+function ozelStatus(item) {
+  const days = daysUntilOzel(item);
+  if (days < 0)  return { cls:'overdue', badge:'red',   label: `${Math.abs(days)} gün gecikti!` };
+  if (days === 0) return { cls:'overdue', badge:'red',   label: 'Bugün yapılmalı!' };
+  if (days <= item.notifDaysBefore) return { cls:'due-soon', badge:'amber', label:`${days} gün kaldı` };
+  return { cls:'ok', badge:'green', label:`${days} gün kaldı` };
+}
+
+function renderOzel() {
+  if (!D.ozel) D.ozel = [];
+  const body = document.getElementById('ozel-body');
+  if (!D.ozel.length) {
+    body.innerHTML = `<div style="font-size:13px;color:var(--text3);padding:20px 0;">Henüz rutin eklenmedi.<br><br>Diş kontrolü, gözlük muayenesi, Drive temizliği gibi periyodik rutinlerini buraya ekle.</div>`;
+    return;
+  }
+  // Yaklaşana göre sırala
+  const sorted = [...D.ozel].sort((a,b) => daysUntilOzel(a) - daysUntilOzel(b));
+  body.innerHTML = sorted.map(item => {
+    const st = ozelStatus(item);
+    const freq = FREQ_MAP[item.freq] || FREQ_MAP.yearly;
+    const days = daysUntilOzel(item);
+    const totalDays = freq.days;
+    const elapsed = totalDays - days;
+    const pct = Math.min(100, Math.max(0, Math.round((elapsed / totalDays) * 100)));
+    const barColor = st.badge === 'red' ? 'var(--red)' : st.badge === 'amber' ? 'var(--amber)' : 'var(--green)';
+    const lastFormatted = item.lastDate ? new Date(item.lastDate).toLocaleDateString('tr-TR', {day:'numeric', month:'long', year:'numeric'}) : 'Henüz yapılmadı';
+    const nextFormatted = item.lastDate ? (() => { const d = new Date(item.lastDate); d.setDate(d.getDate() + totalDays); return d.toLocaleDateString('tr-TR', {day:'numeric', month:'long', year:'numeric'}); })() : '—';
+    return `<div class="ozel-card ${st.cls}">
+      <div class="ozel-header">
+        <div class="ozel-icon">${item.icon || '🔔'}</div>
+        <div style="flex:1;">
+          <div class="ozel-name">${item.name}</div>
+          <div class="ozel-freq">${freq.label}</div>
+        </div>
+        <div class="ozel-status">
+          <span class="ozel-badge ${st.badge}">${st.label}</span>
+        </div>
+      </div>
+      <div class="ozel-meta">
+        <span>Son: ${lastFormatted}</span>
+        <span>Sonraki: ${nextFormatted}</span>
+        ${item.note ? `<span style="color:var(--text3);">· ${item.note}</span>` : ''}
+      </div>
+      <div class="ozel-progress">
+        <div class="ozel-progress-bar" style="width:${pct}%;background:${barColor};"></div>
+      </div>
+      <div class="ozel-actions">
+        <button class="btn sm primary" onclick="markOzelDone(${item.id})">✓ Yapıldı — bugün kaydet</button>
+        <button class="btn sm" onclick="openEditOzel(${item.id})">Düzenle</button>
+        <button class="btn sm danger" onclick="deleteOzel(${item.id})">Sil</button>
+      </div>
+    </div>`;
+  }).join('');
+  updateOzelBadge();
+}
+
+function updateOzelBadge() {
+  const due = (D.ozel||[]).filter(item => {
+    const days = daysUntilOzel(item);
+    return days <= item.notifDaysBefore;
+  }).length;
+  const badge = document.getElementById('ozel-due-cnt');
+  if (badge) { badge.style.display = due ? '' : 'none'; badge.textContent = due; }
+}
+
+function markOzelDone(id) {
+  const item = D.ozel.find(i => i.id === id);
+  if (!item) return;
+  item.lastDate = today;
+  save(); renderOzel();
+}
+
+function toggleOzelEmojiGrid() {
+  const grid = document.getElementById('oz-emoji-grid');
+  if (!grid) return;
+  grid.style.display = grid.style.display === 'none' ? 'flex' : 'none';
+}
+
+function pickOzelEmoji(emoji) {
+  const display = document.getElementById('oz-icon-display');
+  const input = document.getElementById('m-oz-icon');
+  if (display) display.textContent = emoji;
+  if (input) input.value = emoji;
+  const grid = document.getElementById('oz-emoji-grid');
+  if (grid) grid.style.display = 'none';
+}
+
+function openAddOzel() {
+  openModal('Rutin ekle', `
+    <div class="mf">
+      <label>İkon</label>
+      <div id="oz-icon-display" style="font-size:28px;margin-bottom:6px;cursor:pointer;" onclick="toggleOzelEmojiGrid()">🔔</div>
+      <input type="hidden" id="m-oz-icon" value="🔔"/>
+      <div id="oz-emoji-grid" style="display:none;flex-wrap:wrap;gap:3px;margin-bottom:4px;">
+        ${['🦷','🪥','💾','📁','💉','👁','🏃','💊','🩺','🧴','✂','🧹','📱','💻','🔑','📋','📅','🎯','💡','🔧','🚗','✈','📚','🎵','🌿','🧘','💪','🛁','🫀','🧠','⚡','🔔','⭐','🗓','📌'].map(e =>
+          `<button type="button" onclick="pickOzelEmoji('${e}')" style="width:32px;height:32px;border:none;background:transparent;cursor:pointer;font-size:18px;border-radius:6px;transition:background 0.1s;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='transparent'">${e}</button>`
+        ).join('')}
+      </div>
+    </div>
+    <div class="mf"><label>Rutin adı</label><input id="m-oz-name" placeholder="Diş Kontrolü"/></div>
+    <div class="mf"><label>Kontrol sıklığı</label>
+      <select id="m-oz-freq">
+        <option value="weekly">Haftada bir</option>
+        <option value="monthly">Ayda bir</option>
+        <option value="3months">3 ayda bir</option>
+        <option value="6months" selected>6 ayda bir</option>
+        <option value="yearly">Yılda bir</option>
+      </select>
+    </div>
+    <div class="mf"><label>Son yapılma tarihi</label><input id="m-oz-date" type="date" value="${today}"/></div>
+    <div class="mf"><label>Not (doktor, yer vb.)</label><input id="m-oz-note" placeholder="opsiyonel"/></div>`, 'addOzel', null, false);
+}
+
+function openEditOzel(id) {
+  const item = D.ozel.find(i => i.id === id); if (!item) return;
+  openModal('Rutini düzenle', `
+    <div class="mf">
+      <label>İkon</label>
+      <div id="oz-icon-display" style="font-size:28px;margin-bottom:6px;cursor:pointer;" onclick="toggleOzelEmojiGrid()">${item.icon||'🔔'}</div>
+      <input type="hidden" id="m-oz-icon" value="${item.icon||'🔔'}"/>
+      <div id="oz-emoji-grid" style="display:none;flex-wrap:wrap;gap:3px;margin-bottom:4px;">
+        ${['🦷','🪥','💾','📁','💉','👁','🏃','💊','🩺','🧴','✂','🧹','📱','💻','🔑','📋','📅','🎯','💡','🔧','🚗','✈','📚','🎵','🌿','🧘','💪','🛁','🫀','🧠','⚡','🔔','⭐','🗓','📌'].map(e =>
+          `<button type="button" onclick="pickOzelEmoji('${e}')" style="width:32px;height:32px;border:none;background:transparent;cursor:pointer;font-size:18px;border-radius:6px;transition:background 0.1s;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='transparent'">${e}</button>`
+        ).join('')}
+      </div>
+    </div>
+    <div class="mf"><label>Rutin adı</label><input id="m-oz-name" value="${item.name}"/></div>
+    <div class="mf"><label>Kontrol sıklığı</label>
+      <select id="m-oz-freq">
+        ${Object.entries(FREQ_MAP).map(([k,v]) => `<option value="${k}" ${item.freq===k?'selected':''}>${v.label}</option>`).join('')}
+      </select>
+    </div>
+    <div class="mf"><label>Son yapılma tarihi</label><input id="m-oz-date" type="date" value="${item.lastDate||today}"/></div>
+    <div class="mf"><label>Not</label><input id="m-oz-note" value="${item.note||''}"/></div>`, 'editOzel', id, true);
+}
+
+function deleteOzel(id) {
+  const item = D.ozel.find(i => i.id === id); if (!item) return;
+  const btn = document.querySelector(`[onclick="deleteOzel(${id})"]`);
+  if (btn && btn.dataset.confirming === '1') {
+    D.ozel = D.ozel.filter(i => i.id !== id);
+    save(); renderOzel();
+  } else {
+    if (btn) { btn.textContent = 'Emin misin?'; btn.style.color = 'var(--red)'; btn.dataset.confirming = '1'; }
+    setTimeout(() => { if (btn && btn.dataset.confirming === '1') { btn.textContent = 'Sil'; btn.style.color = ''; btn.dataset.confirming = '0'; } }, 3000);
+  }
+}
+
+function scheduleOzelNotifications() {
+  if (!D.settings.notif || Notification.permission !== 'granted') return;
+  (D.ozel||[]).forEach(item => {
+    const days = daysUntilOzel(item);
+    if (days === item.notifDaysBefore) {
+      new Notification(`🔔 ${item.name}`, { body: `${days} gün içinde yapılması gerekiyor.` });
+    } else if (days === 0) {
+      new Notification(`⚠ ${item.name}`, { body: 'Bugün yapılması gerekiyor!' });
+    } else if (days < 0) {
+      new Notification(`❗ ${item.name}`, { body: `${Math.abs(days)} gün gecikti!` });
+    }
+  });
+}
+
 // ---- CAR ----
 function renderCar() {
   const c = D.car;
@@ -2176,6 +2467,7 @@ const MENU_ITEMS = [
   { key: 'lists',     label: 'Listeler',         def: '☷' },
   { key: 'market',    label: 'Market',           def: '◉' },
   { key: 'health',    label: 'Sağlık',           def: '♡' },
+  { key: 'ozel',      label: 'Rutinler',         def: '🔔' },
   { key: 'car',       label: 'Araç',             def: '◎' },
   { key: 'settings',  label: 'Ayarlar',          def: '⚙' },
 ];
@@ -2598,6 +2890,22 @@ function modalSave() {
     const name = g('m-habit')?.trim(); if (!name) return;
     D.habits.push({id:Date.now(), name, days:[false,false,false,false,false,false,false]});
     save(); closeModal(); renderHabits();
+  } else if (m === 'addOzel' || m === 'editOzel') {
+    const name = g('m-oz-name')?.trim(); if (!name) return;
+    const freq = g('m-oz-freq') || 'yearly';
+    const freqDays = FREQ_MAP[freq]?.days || 365;
+    // Bildirim süresi: yılda 1 → 7 gün, 6 ayda 1 → 3 gün, diğerleri → 3 gün
+    const notifDaysBefore = freq === 'yearly' ? 7 : freq === '6months' ? 3 : 3;
+    const data = {
+      name, icon: g('m-oz-icon')?.trim() || '🔔',
+      freq, lastDate: g('m-oz-date') || today,
+      note: g('m-oz-note') || '',
+      notifDaysBefore,
+    };
+    if (!D.ozel) D.ozel = [];
+    if (m === 'editOzel') { Object.assign(D.ozel.find(i => i.id === editId) || {}, data); }
+    else D.ozel.push({id: Date.now(), ...data});
+    save(); closeModal(); renderOzel();
   } else if (m === 'addFuel') {
     const fuel = {id:Date.now(), date:g('m-fuel-date'), km:parseInt(g('m-fuel-km')||D.car.km), liters:parseFloat(g('m-fuel-liters')||0), price:parseInt(g('m-fuel-price')||0)};
     D.fuels.push(fuel);
@@ -2634,9 +2942,10 @@ function modalDelete() {
     editBook: () => D.books = D.books.filter(b=>b.id!==editId),
     editFilm: () => D.films = D.films.filter(f=>f.id!==editId),
     editTravel: () => D.travels = D.travels.filter(t=>t.id!==editId),
+    editOzel: () => D.ozel = (D.ozel||[]).filter(i=>i.id!==editId),
   };
   if (deletes[m]) { deletes[m](); save(); closeModal(); }
-  const re = {editEvent:renderPlanner, editDesign:renderEtsy, editEtsyNote:renderEtsy, editStudent:renderOrigami, editBday:renderBdayList, editBook:renderListBody, editFilm:renderListBody, editTravel:renderListBody};
+  const re = {editEvent:renderPlanner, editDesign:renderEtsy, editEtsyNote:renderEtsy, editStudent:renderOrigami, editBday:renderBdayList, editBook:renderListBody, editFilm:renderListBody, editTravel:renderListBody, editOzel:renderOzel};
   if (re[m]) re[m]();
 }
 
@@ -2645,8 +2954,9 @@ document.getElementById('sb-date').textContent = new Date().toLocaleDateString('
 if (D.settings.theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
 renderHome();
 updateBadges();
+updateOzelBadge();
 applyStoredIcons();
-if (D.settings.notif && Notification.permission === 'granted') { scheduleNotifications(); scheduleBdayNotifications(); }
+if (D.settings.notif && Notification.permission === 'granted') { scheduleNotifications(); scheduleBdayNotifications(); scheduleOzelNotifications(); }
 if (D.settings.waterNotif) scheduleWaterNotif();
 
 document.addEventListener('keydown', e => {
